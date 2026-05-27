@@ -15,6 +15,7 @@ const invoiceRoutes = require("./routes/invoices");
 const expenseRoutes = require("./routes/expenses");
 const stockOutRoutes = require("./routes/stockOut");
 const reportRoutes = require("./routes/reports");
+const userRoutes = require("./routes/users");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -37,6 +38,7 @@ app.use("/api/invoices", invoiceRoutes);
 app.use("/api/expenses", expenseRoutes);
 app.use("/api/stock-out", stockOutRoutes);
 app.use("/api/reports", reportRoutes);
+app.use("/api/users", userRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);

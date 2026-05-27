@@ -7,7 +7,11 @@ const router = express.Router();
 router.use(authenticate, requireAdmin);
 
 const PAYMENT_TYPES = ["CASH", "CREDIT", "UPI", "BANK_TRANSFER", "CHEQUE"];
-const COMPANY_STATE = process.env.COMPANY_STATE || "Karnataka";
+const INDIAN_STATES = [
+  "Andhra Pradesh", "Arunachal Pradesh", "Assam", "Bihar", "Chhattisgarh", "Delhi", "Goa", "Gujarat",
+  "Haryana", "Himachal Pradesh", "Jharkhand", "Karnataka", "Kerala", "Madhya Pradesh", "Maharashtra",
+  "Odisha", "Punjab", "Rajasthan", "Tamil Nadu", "Telangana", "Uttar Pradesh", "Uttarakhand", "West Bengal",
+];
 
 function roundMoney(value) {
   return Math.round((Number(value) + Number.EPSILON) * 100) / 100;
@@ -55,8 +59,13 @@ async function nextInvoiceNumber(tx) {
   return `INV-${year}-${String(next).padStart(4, "0")}`;
 }
 
-function calculateInvoice(items, placeOfSupply) {
-  const gstType = placeOfSupply === COMPANY_STATE ? "CGST_SGST" : "IGST";
+function extractState(address) {
+  const text = String(address || "").toLowerCase();
+  return INDIAN_STATES.find((state) => text.includes(state.toLowerCase())) || "";
+}
+
+function calculateInvoice(items, billingState, placeOfSupply) {
+  const gstType = billingState === placeOfSupply ? "CGST_SGST" : "IGST";
   const computedItems = items.map((item) => {
     const quantity = Number(item.quantity);
     const rate = Number(item.rate);
@@ -143,6 +152,12 @@ router.post("/", async (req, res) => {
 
     const customer = await prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) return res.status(400).json({ error: "Customer not found" });
+    const billingState = extractState(customer.address);
+    if (!billingState) {
+      return res.status(400).json({
+        error: "Billing address must include a valid Indian state for GST calculation",
+      });
+    }
 
     const productIds = [...new Set(items.map((item) => item.productId).filter(Boolean))];
     const products = await prisma.product.findMany({ where: { id: { in: productIds } } });
@@ -166,7 +181,7 @@ router.post("/", async (req, res) => {
       return res.status(400).json({ error: "Invoice line quantities and amounts must be valid" });
     }
 
-    const totals = calculateInvoice(normalizedItems, placeOfSupply);
+    const totals = calculateInvoice(normalizedItems, billingState, placeOfSupply);
     const paid = roundMoney(advancePaid || 0);
     const balanceDue = roundMoney(totals.grandTotal - paid);
 

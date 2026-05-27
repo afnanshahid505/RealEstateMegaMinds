@@ -31,6 +31,11 @@ const EMPTY_CUSTOMER = {
 
 const EMPTY_ITEM = { productId: '', quantity: '', rate: '', discount: '' };
 
+function extractState(address) {
+  const text = String(address || '').toLowerCase();
+  return INDIAN_STATES.find((state) => text.includes(state.toLowerCase())) || '';
+}
+
 function asNumber(value) {
   const number = Number(value);
   return Number.isFinite(number) ? number : 0;
@@ -88,7 +93,7 @@ export default function AdminCustomers() {
     paymentType: 'CASH',
     customerId: '',
     customerSearch: '',
-    placeOfSupply: 'Karnataka',
+    placeOfSupply: '',
     advancePaid: '',
     items: [{ ...EMPTY_ITEM }],
   });
@@ -119,8 +124,14 @@ export default function AdminCustomers() {
     );
   }, [customers, invoiceForm.customerSearch]);
 
+  const selectedInvoiceCustomer = useMemo(
+    () => customers.find((customer) => customer.id === invoiceForm.customerId),
+    [customers, invoiceForm.customerId]
+  );
+
   const invoiceTotals = useMemo(() => {
-    const gstType = invoiceForm.placeOfSupply === 'Karnataka' ? 'CGST_SGST' : 'IGST';
+    const billingState = extractState(selectedInvoiceCustomer?.address);
+    const gstType = billingState && invoiceForm.placeOfSupply === billingState ? 'CGST_SGST' : 'IGST';
     const lines = invoiceForm.items.map((item) => {
       const product = productById.get(item.productId);
       const quantity = asNumber(item.quantity);
@@ -149,7 +160,7 @@ export default function AdminCustomers() {
     const grandTotal = roundMoney(subtotal + totalGst - totalDiscount);
     const balanceDue = roundMoney(grandTotal - asNumber(invoiceForm.advancePaid));
     return { subtotal, totalDiscount, cgstTotal, sgstTotal, igstTotal, totalGst, grandTotal, balanceDue, gstType };
-  }, [invoiceForm.items, invoiceForm.placeOfSupply, invoiceForm.advancePaid, productById]);
+  }, [invoiceForm.items, invoiceForm.placeOfSupply, invoiceForm.advancePaid, productById, selectedInvoiceCustomer]);
 
   const handleCustomerSubmit = async (e) => {
     e.preventDefault();
@@ -217,7 +228,7 @@ export default function AdminCustomers() {
         paymentType: 'CASH',
         customerId: '',
         customerSearch: '',
-        placeOfSupply: 'Karnataka',
+        placeOfSupply: '',
         advancePaid: '',
         items: [{ ...EMPTY_ITEM }],
       });
@@ -348,7 +359,18 @@ export default function AdminCustomers() {
           </label>
           <label>
             Select Customer
-            <select value={invoiceForm.customerId} onChange={(e) => setInvoiceForm({ ...invoiceForm, customerId: e.target.value })} required>
+            <select
+              value={invoiceForm.customerId}
+              onChange={(e) => {
+                const customer = customers.find((c) => c.id === e.target.value);
+                setInvoiceForm({
+                  ...invoiceForm,
+                  customerId: e.target.value,
+                  placeOfSupply: extractState(customer?.shippingAddress) || extractState(customer?.address) || invoiceForm.placeOfSupply,
+                });
+              }}
+              required
+            >
               <option value="">Select customer</option>
               {filteredInvoiceCustomers.map((customer) => <option key={customer.id} value={customer.id}>{customer.companyName} - {customer.phone}</option>)}
             </select>
@@ -356,8 +378,13 @@ export default function AdminCustomers() {
           <label>
             Place of Supply
             <select value={invoiceForm.placeOfSupply} onChange={(e) => setInvoiceForm({ ...invoiceForm, placeOfSupply: e.target.value })} required>
+              <option value="">Select shipping state</option>
               {INDIAN_STATES.map((state) => <option key={state} value={state}>{state}</option>)}
             </select>
+          </label>
+          <label>
+            Billing State
+            <input value={extractState(selectedInvoiceCustomer?.address) || 'Add state in billing address'} readOnly />
           </label>
           <label>
             Amount Paid in Advance

@@ -8,10 +8,12 @@ import AdminCustomers from './pages/admin/Customers';
 import AdminStockInView from './pages/admin/StockInView';
 import AdminExpenses from './pages/admin/Expenses';
 import AccountReport from './pages/admin/AccountReport';
+import StaffAccounts from './pages/admin/StaffAccounts';
 import StaffRawMaterials from './pages/staff/RawMaterials';
 import StaffProduction from './pages/staff/Production';
 import StaffStockIn from './pages/staff/StockIn';
 import StaffProductsView from './pages/staff/ProductsView';
+import StaffProfile from './pages/staff/Profile';
 import StockOutPage from './pages/shared/StockOut';
 import ProductionReport from './pages/shared/ProductionReport';
 
@@ -30,6 +32,7 @@ const adminNav = [
   { to: '/admin/products', label: 'Products' },
   { to: '/admin/raw-materials', label: 'Raw Materials' },
   { to: '/admin/customers', label: 'Customers' },
+  { to: '/admin/staff-accounts', label: 'Staff Accounts' },
   { to: '/admin/stock-in', label: 'Stock In' },
   { to: '/admin/stock-out', label: 'Stock Out' },
   { to: '/admin/expenses', label: 'Expenses' },
@@ -43,6 +46,7 @@ const staffNav = [
   { to: '/staff/stock-in', label: 'Stock In' },
   { to: '/staff/stock-out', label: 'Stock Out' },
   { to: '/staff/products', label: 'Products' },
+  { to: '/staff/profile', label: 'Profile' },
 ];
 
 function AdminShell() {
@@ -77,6 +81,7 @@ function AppRoutes() {
         <Route path="products" element={<AdminProducts />} />
         <Route path="raw-materials" element={<StaffRawMaterials />} />
         <Route path="customers" element={<AdminCustomers />} />
+        <Route path="staff-accounts" element={<StaffAccounts />} />
         <Route path="stock-in" element={<AdminStockInView />} />
         <Route path="stock-out" element={<StockOutPage />} />
         <Route path="expenses" element={<AdminExpenses />} />
@@ -96,6 +101,7 @@ function AppRoutes() {
         <Route path="stock-in" element={<StaffStockIn />} />
         <Route path="stock-out" element={<StockOutPage />} />
         <Route path="products" element={<StaffProductsView />} />
+        <Route path="profile" element={<StaffProfile />} />
       </Route>
       <Route path="*" element={<Navigate to={user ? (user.role === 'ADMIN' ? '/admin' : '/staff') : '/login'} replace />} />
     </Routes>

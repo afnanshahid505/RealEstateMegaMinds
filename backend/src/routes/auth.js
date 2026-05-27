@@ -19,14 +19,14 @@ router.post("/login", async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: user.id, email: user.email, name: user.name, role: user.role },
+      { id: user.id, email: user.email, name: user.name, post: user.post, role: user.role },
       JWT_SECRET,
       { expiresIn: "7d" }
     );
 
     res.json({
       token,
-      user: { id: user.id, email: user.email, name: user.name, role: user.role },
+      user: { id: user.id, email: user.email, name: user.name, post: user.post, role: user.role },
     });
   } catch (err) {
     console.error(err);
@@ -43,7 +43,7 @@ router.get("/me", async (req, res) => {
     const payload = jwt.verify(header.slice(7), JWT_SECRET);
     const user = await prisma.user.findUnique({
       where: { id: payload.id },
-      select: { id: true, email: true, name: true, role: true },
+      select: { id: true, email: true, name: true, post: true, role: true },
     });
     if (!user) return res.status(401).json({ error: "User not found" });
     res.json({ user });
