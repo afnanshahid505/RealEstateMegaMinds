@@ -23,6 +23,7 @@ function buildExportRows(records, includeEnteredBy) {
     quantity: asNumber(record.quantity),
     source: record.source,
     reference: record.referenceNumber,
+    note: record.note || '',
     runningTotal: asNumber(record.runningTotal),
     enteredBy: includeEnteredBy ? record.enteredBy?.name || '-' : undefined,
   }));
@@ -70,13 +71,13 @@ export function StockInRegister({
   const exportRows = buildExportRows(rowsWithTotals, includeEnteredBy);
 
   const handleExportCsv = () => {
-    const headers = ['Date', 'Product', 'Quantity', 'Source', 'Reference', 'Running Total'];
+    const headers = ['Date', 'Product', 'Quantity', 'Source', 'Reference', 'Note', 'Running Total'];
     if (includeEnteredBy) headers.push('Entered By');
 
     const lines = [
       headers.map(csvValue).join(','),
       ...exportRows.map((row) => {
-        const values = [row.date, row.product, row.quantity, row.source, row.reference, row.runningTotal];
+        const values = [row.date, row.product, row.quantity, row.source, row.reference, row.note, row.runningTotal];
         if (includeEnteredBy) values.push(row.enteredBy);
         return values.map(csvValue).join(',');
       }),
@@ -92,11 +93,11 @@ export function StockInRegister({
   };
 
   const handleExportPdf = () => {
-    const headers = ['Date', 'Product', 'Quantity', 'Source', 'Reference', 'Running Total'];
+    const headers = ['Date', 'Product', 'Quantity', 'Source', 'Reference', 'Note', 'Running Total'];
     if (includeEnteredBy) headers.push('Entered By');
 
     const tableRows = exportRows.map((row) => {
-      const values = [row.date, row.product, `+${row.quantity}`, row.source, row.reference, row.runningTotal];
+      const values = [row.date, row.product, `+${row.quantity}`, row.source, row.reference, row.note, row.runningTotal];
       if (includeEnteredBy) values.push(row.enteredBy);
       return `<tr>${values.map((value) => `<td>${htmlCell(value)}</td>`).join('')}</tr>`;
     }).join('');
@@ -212,6 +213,7 @@ export function StockInRegister({
               <th>Qty</th>
               <th>Source</th>
               <th>Reference</th>
+              <th>Note</th>
               <th>Running Total</th>
               {includeEnteredBy && <th>Entered By</th>}
             </tr>
@@ -224,13 +226,14 @@ export function StockInRegister({
                 <td className="text-success">+{record.quantity}</td>
                 <td><span className="badge">{record.source}</span></td>
                 <td>{record.referenceNumber}</td>
+                <td>{record.note || '-'}</td>
                 <td className="text-success">+{record.runningTotal}</td>
                 {includeEnteredBy && <td>{record.enteredBy?.name || '-'}</td>}
               </tr>
             ))}
             {rowsWithTotals.length === 0 && (
               <tr>
-                <td colSpan={includeEnteredBy ? 7 : 6}>No stock in records found.</td>
+                <td colSpan={includeEnteredBy ? 8 : 7}>No stock in records found.</td>
               </tr>
             )}
           </tbody>

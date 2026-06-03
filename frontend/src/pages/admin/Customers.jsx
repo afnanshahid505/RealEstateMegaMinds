@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { api } from '../../api/client';
 import { PageHeader } from '../../components/Layout';
 
@@ -78,6 +79,7 @@ function numberToWordsIndian(amount) {
 }
 
 export default function AdminCustomers() {
+  const [searchParams] = useSearchParams();
   const [customers, setCustomers] = useState([]);
   const [products, setProducts] = useState([]);
   const [invoices, setInvoices] = useState([]);
@@ -109,6 +111,22 @@ export default function AdminCustomers() {
   };
 
   useEffect(load, [customerSearch]);
+
+  useEffect(() => {
+    const customerId = searchParams.get('customerId');
+    if (!customerId || !customers.length) return;
+    const customer = customers.find((c) => c.id === customerId);
+    if (!customer) return;
+    setInvoiceForm((current) => {
+      if (current.customerId === customerId) return current;
+      return {
+        ...current,
+        customerId,
+        customerSearch: customer.companyName,
+        placeOfSupply: extractState(customer.shippingAddress) || extractState(customer.address) || current.placeOfSupply,
+      };
+    });
+  }, [customers, searchParams]);
 
   const productById = useMemo(
     () => new Map(products.map((product) => [product.id, product])),
@@ -280,7 +298,7 @@ export default function AdminCustomers() {
 
   return (
     <div>
-      <PageHeader title="Customers & Invoices" subtitle="Customer onboarding, ledger, GST invoice generation" />
+      <PageHeader title="Generate Invoice" subtitle="Customer onboarding, ledger, GST invoice generation" />
 
       <section className="panel">
         <h3>Onboard Customer</h3>

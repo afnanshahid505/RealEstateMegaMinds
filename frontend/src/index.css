@@ -360,23 +360,32 @@ a {
   overflow-x: auto;
 }
 
-.material-balance {
+.form-grid .material-balance {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
   color: var(--muted);
   font-size: 0.9rem;
+  grid-column: 1 / -1;
 }
 
 .material-balance strong {
   color: var(--success);
 }
 
-.production-extra-materials {
+.form-grid .production-extra-materials {
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 1rem;
   background: var(--bg);
+  grid-column: 1 / -1;
+  max-width: 860px;
+}
+
+.form-grid .production-submit-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .invoice-lines,
@@ -415,6 +424,11 @@ a {
 .nested-form-grid {
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   margin-bottom: 0.75rem;
+}
+
+.extra-material-row {
+  grid-template-columns: minmax(240px, 1.5fr) minmax(150px, 1fr) minmax(170px, 1fr) auto;
+  align-items: end;
 }
 
 .nested-form-grid:last-child {
@@ -616,5 +630,8 @@ a {
   }
   .form-grid .span-2 {
     grid-column: span 1;
+  }
+  .extra-material-row {
+    grid-template-columns: 1fr;
   }
 }

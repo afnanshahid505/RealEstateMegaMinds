@@ -253,6 +253,22 @@ router.patch("/:id", async (req, res) => {
   }
 });
 
+router.delete("/:id", async (req, res) => {
+  try {
+    await prisma.rawMaterial.delete({ where: { id: req.params.id } });
+    res.status(204).end();
+  } catch (err) {
+    if (err.code === "P2003") {
+      return res.status(400).json({ error: "Material cannot be deleted because it is used in production records" });
+    }
+    if (err.code === "P2025") {
+      return res.status(404).json({ error: "Material not found" });
+    }
+    console.error(err);
+    res.status(500).json({ error: "Failed to delete material" });
+  }
+});
+
 // 5.3 Log additional purchase
 router.post("/:id/purchases", async (req, res) => {
   try {

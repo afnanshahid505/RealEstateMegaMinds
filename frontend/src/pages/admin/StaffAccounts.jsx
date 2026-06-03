@@ -66,6 +66,7 @@ export default function StaffAccounts() {
             <tr>
               <th>Name</th>
               <th>Post</th>
+              <th>Phone</th>
               <th>Email</th>
               <th>Created</th>
             </tr>
@@ -75,11 +76,12 @@ export default function StaffAccounts() {
               <tr key={user.id}>
                 <td>{user.name}</td>
                 <td>{user.post || '-'}</td>
+                <td>{user.phone || '-'}</td>
                 <td>{user.email}</td>
                 <td>{new Date(user.createdAt).toLocaleDateString('en-IN')}</td>
               </tr>
             ))}
-            {staff.length === 0 && <tr><td colSpan="4">No staff accounts found.</td></tr>}
+            {staff.length === 0 && <tr><td colSpan="5">No staff accounts found.</td></tr>}
           </tbody>
         </table>
       </section>

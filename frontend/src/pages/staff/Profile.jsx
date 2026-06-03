@@ -4,20 +4,41 @@ import { PageHeader } from '../../components/Layout';
 
 export default function StaffProfile() {
   const [profile, setProfile] = useState(null);
+  const [phoneForm, setPhoneForm] = useState({ phone: '' });
   const [passwordForm, setPasswordForm] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
-  const [message, setMessage] = useState('');
+  const [phoneMessage, setPhoneMessage] = useState('');
+  const [passwordMessage, setPasswordMessage] = useState('');
 
   const load = () => {
-    api('/users/me').then(({ user }) => setProfile(user));
+    api('/users/me').then(({ user }) => {
+      setProfile(user);
+      setPhoneForm({ phone: user.phone || '' });
+    });
   };
 
   useEffect(load, []);
 
+  const updatePhone = async (e) => {
+    e.preventDefault();
+    setPhoneMessage('');
+    try {
+      const { user } = await api('/users/me/phone', {
+        method: 'PATCH',
+        body: JSON.stringify(phoneForm),
+      });
+      setProfile(user);
+      setPhoneForm({ phone: user.phone || '' });
+      setPhoneMessage('Phone number updated.');
+    } catch (err) {
+      setPhoneMessage(err.message);
+    }
+  };
+
   const changePassword = async (e) => {
     e.preventDefault();
-    setMessage('');
+    setPasswordMessage('');
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      setMessage('New password and confirmation do not match.');
+      setPasswordMessage('New password and confirmation do not match.');
       return;
     }
 
@@ -30,9 +51,9 @@ export default function StaffProfile() {
         }),
       });
       setPasswordForm({ currentPassword: '', newPassword: '', confirmPassword: '' });
-      setMessage('Password changed successfully.');
+      setPasswordMessage('Password changed successfully.');
     } catch (err) {
-      setMessage(err.message);
+      setPasswordMessage(err.message);
     }
   };
 
@@ -46,10 +67,23 @@ export default function StaffProfile() {
           <tbody>
             <tr><th>Name</th><td>{profile?.name || '-'}</td></tr>
             <tr><th>Post</th><td>{profile?.post || '-'}</td></tr>
+            <tr><th>Phone</th><td>{profile?.phone || '-'}</td></tr>
             <tr><th>Email</th><td>{profile?.email || '-'}</td></tr>
             <tr><th>Role</th><td>{profile?.role || '-'}</td></tr>
           </tbody>
         </table>
+      </section>
+
+      <section className="panel">
+        <h3>Update Phone Number</h3>
+        <form className="form-grid" onSubmit={updatePhone}>
+          <label>
+            Phone Number
+            <input value={phoneForm.phone} onChange={(e) => setPhoneForm({ phone: e.target.value })} required placeholder="9876543210" />
+          </label>
+          <button type="submit" className="btn-primary">Save Phone</button>
+        </form>
+        {phoneMessage && <p className="form-note">{phoneMessage}</p>}
       </section>
 
       <section className="panel">
@@ -69,7 +103,7 @@ export default function StaffProfile() {
           </label>
           <button type="submit" className="btn-primary">Change Password</button>
         </form>
-        {message && <p className="form-note">{message}</p>}
+        {passwordMessage && <p className="form-note">{passwordMessage}</p>}
       </section>
     </div>
   );

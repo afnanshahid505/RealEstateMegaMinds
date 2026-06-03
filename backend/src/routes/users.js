@@ -1,18 +1,32 @@
 const express = require("express");
 const bcrypt = require("bcryptjs");
 const prisma = require("../lib/prisma");
-const { authenticate, requireAdmin } = require("../middleware/auth");
+const { authenticate, requireAdmin, requireStaffOrAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 
 router.use(authenticate);
+
+router.get("/recorders", requireStaffOrAdmin, async (_req, res) => {
+  try {
+    const users = await prisma.user.findMany({
+      where: { role: { in: ["ADMIN", "STAFF"] } },
+      orderBy: [{ role: "asc" }, { name: "asc" }],
+      select: { id: true, name: true, role: true },
+    });
+    res.json(users);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch recorders" });
+  }
+});
 
 router.get("/staff", requireAdmin, async (_req, res) => {
   try {
     const staff = await prisma.user.findMany({
       where: { role: "STAFF" },
       orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, post: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, post: true, phone: true, email: true, role: true, createdAt: true },
     });
     res.json(staff);
   } catch (err) {
@@ -40,7 +54,7 @@ router.post("/staff", requireAdmin, async (req, res) => {
         password: hashed,
         role: "STAFF",
       },
-      select: { id: true, name: true, post: true, email: true, role: true, createdAt: true },
+      select: { id: true, name: true, post: true, phone: true, email: true, role: true, createdAt: true },
     });
 
     res.status(201).json(user);
@@ -55,13 +69,32 @@ router.get("/me", async (req, res) => {
   try {
     const user = await prisma.user.findUnique({
       where: { id: req.user.id },
-      select: { id: true, name: true, post: true, email: true, role: true },
+      select: { id: true, name: true, post: true, phone: true, email: true, role: true },
     });
     if (!user) return res.status(404).json({ error: "User not found" });
     res.json({ user });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: "Failed to fetch profile" });
+  }
+});
+
+router.patch("/me/phone", async (req, res) => {
+  try {
+    const { phone } = req.body;
+    if (!phone) {
+      return res.status(400).json({ error: "Phone number is required" });
+    }
+
+    const user = await prisma.user.update({
+      where: { id: req.user.id },
+      data: { phone: phone.trim() },
+      select: { id: true, name: true, post: true, phone: true, email: true, role: true },
+    });
+    res.json({ user });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to update phone number" });
   }
 });
 

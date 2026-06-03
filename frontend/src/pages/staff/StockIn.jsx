@@ -2,24 +2,35 @@ import { useEffect, useState } from 'react';
 import { api } from '../../api/client';
 import { StockInRegister } from '../../components/StockInRegister';
 import { PageHeader } from '../../components/Layout';
+import { useAuth } from '../../context/AuthContext';
 
 const SOURCES = ['PURCHASE', 'TRANSFER', 'ADJUSTMENT'];
+const today = () => new Date().toISOString().slice(0, 10);
 
 export default function StaffStockIn() {
+  const { user } = useAuth();
+  const isStaff = user?.role === 'STAFF';
   const [products, setProducts] = useState([]);
+  const [recorders, setRecorders] = useState([]);
   const [records, setRecords] = useState([]);
   const [filters, setFilters] = useState({ fromDate: '', toDate: '', productId: '', source: '' });
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: today(),
     productId: '',
     quantity: '',
     source: 'PURCHASE',
     referenceNumber: '',
+    note: '',
+    enteredById: '',
   });
   const [message, setMessage] = useState('');
 
   const load = () => {
     api('/products').then(setProducts);
+    api('/users/recorders').then((users) => {
+      setRecorders(users);
+      setForm((current) => current.enteredById ? current : { ...current, enteredById: user?.id || users[0]?.id || '' });
+    });
 
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => {
@@ -40,11 +51,12 @@ export default function StaffStockIn() {
         method: 'POST',
         body: JSON.stringify({
           ...form,
+          date: isStaff ? today() : form.date,
           quantity: parseFloat(form.quantity),
         }),
       });
       setMessage('Stock In recorded - finished goods inventory updated.');
-      setForm((f) => ({ ...f, quantity: '', referenceNumber: '' }));
+      setForm((f) => ({ ...f, quantity: '', referenceNumber: '', note: '' }));
       load();
     } catch (err) {
       setMessage(err.message);
@@ -64,7 +76,13 @@ export default function StaffStockIn() {
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>
             Date
-            <input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
+            <input
+              type="date"
+              value={isStaff ? today() : form.date}
+              onChange={(e) => setForm({ ...form, date: e.target.value })}
+              disabled={isStaff}
+              required
+            />
           </label>
           <label>
             Product
@@ -91,6 +109,18 @@ export default function StaffStockIn() {
             Reference Number
             <input value={form.referenceNumber} onChange={(e) => setForm({ ...form, referenceNumber: e.target.value })} required />
           </label>
+          <label>
+            Recorded By
+            <select value={form.enteredById} onChange={(e) => setForm({ ...form, enteredById: e.target.value })} required>
+              {recorders.map((recorder) => (
+                <option key={recorder.id} value={recorder.id}>{recorder.name} ({recorder.role})</option>
+              ))}
+            </select>
+          </label>
+          <label className="span-2">
+            Note
+            <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          </label>
           <button type="submit" className="btn-primary">Record Stock In</button>
         </form>
         {message && <p className="form-note">{message}</p>}
@@ -102,6 +132,7 @@ export default function StaffStockIn() {
         products={products}
         filters={filters}
         onFilterChange={setFilters}
+        includeEnteredBy={user?.role === 'ADMIN'}
       />
     </div>
   );

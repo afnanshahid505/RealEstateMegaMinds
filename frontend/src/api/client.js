@@ -5,10 +5,11 @@ function getToken() {
 }
 
 export async function api(path, options = {}) {
+  const isFormData = options.body instanceof FormData;
   const headers = {
-    'Content-Type': 'application/json',
     ...options.headers,
   };
+  if (!isFormData) headers['Content-Type'] = 'application/json';
   const token = getToken();
   if (token) headers.Authorization = `Bearer ${token}`;
 

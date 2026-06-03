@@ -38,6 +38,7 @@ export default function StaffProduction() {
     quantityProduced: '',
     workerCount: '',
     batchReference: '',
+    note: '',
     cementMaterialId: '',
     cementBagsUsed: '',
     extraUsages: [EMPTY_EXTRA_USAGE],
@@ -164,6 +165,7 @@ export default function StaffProduction() {
           quantityProduced: asNumber(form.quantityProduced),
           workerCount: parseInt(form.workerCount, 10),
           batchReference: form.batchReference,
+          note: form.note,
           materialUsages,
         }),
       });
@@ -176,6 +178,7 @@ export default function StaffProduction() {
         quantityProduced: '',
         cementBagsUsed: '',
         batchReference: '',
+        note: '',
         extraUsages: [EMPTY_EXTRA_USAGE],
       }));
       load();
@@ -239,6 +242,10 @@ export default function StaffProduction() {
             Batch Reference
             <input value={form.batchReference} onChange={(e) => setForm({ ...form, batchReference: e.target.value })} required placeholder="BATCH-2026-051" />
           </label>
+          <label className="span-2">
+            Note
+            <textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
+          </label>
 
           <div className="span-2 material-balance">
             <span>
@@ -263,7 +270,7 @@ export default function StaffProduction() {
             {form.extraUsages.map((usage, index) => {
               const selectedMaterial = materialById.get(usage.rawMaterialId);
               return (
-                <div className="form-grid nested-form-grid" key={index}>
+                <div className="form-grid nested-form-grid extra-material-row" key={index}>
                   <label>
                     Raw Material Name
                     <select value={usage.rawMaterialId} onChange={(e) => updateExtraUsage(index, { rawMaterialId: e.target.value })}>
@@ -291,7 +298,9 @@ export default function StaffProduction() {
             })}
           </div>
 
-          <button type="submit" className="btn-primary">Save Production</button>
+          <div className="span-2 production-submit-row">
+            <button type="submit" className="btn-primary">Save Production</button>
+          </div>
         </form>
         {message && <p className="form-note">{message}</p>}
       </section>
@@ -338,6 +347,7 @@ export default function StaffProduction() {
                 <th>Efficiency</th>
                 <th>Workers</th>
                 <th>Batch</th>
+                <th>Note</th>
                 <th>Materials Used</th>
                 <th>Stock In</th>
               </tr>
@@ -357,6 +367,7 @@ export default function StaffProduction() {
                     <td>{efficiency ? `${efficiency.toFixed(2)} bricks/bag` : '-'}</td>
                     <td>{record.workerCount}</td>
                     <td>{record.batchReference}</td>
+                    <td>{record.note || '-'}</td>
                     <td>
                       {record.materialUsages?.map((usage) => (
                         <span className="material-chip" key={usage.id}>
@@ -374,7 +385,7 @@ export default function StaffProduction() {
               })}
               {visibleRecords.length === 0 && (
                 <tr>
-                  <td colSpan="9">No production entries found.</td>
+                  <td colSpan="10">No production entries found.</td>
                 </tr>
               )}
             </tbody>

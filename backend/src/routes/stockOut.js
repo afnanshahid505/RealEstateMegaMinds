@@ -62,7 +62,7 @@ router.post("/", async (req, res) => {
 
       const stockOut = await tx.stockOut.create({
         data: {
-          date: new Date(date),
+          date: req.user.role === "STAFF" ? new Date() : new Date(date),
           productId,
           quantity,
           reason,

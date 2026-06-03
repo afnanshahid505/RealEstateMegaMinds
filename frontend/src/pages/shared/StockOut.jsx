@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../api/client';
 import { PageHeader } from '../../components/Layout';
+import { useAuth } from '../../context/AuthContext';
 
 const MANUAL_REASONS = ['DAMAGE', 'SAMPLE', 'TRANSFER', 'ADJUSTMENT'];
+const today = () => new Date().toISOString().slice(0, 10);
 
 function asNumber(value) {
   const number = Number(value);
@@ -14,11 +16,13 @@ function formatDate(value) {
 }
 
 export default function StockOutPage() {
+  const { user } = useAuth();
+  const isStaff = user?.role === 'STAFF';
   const [products, setProducts] = useState([]);
   const [records, setRecords] = useState([]);
   const [filters, setFilters] = useState({ fromDate: '', toDate: '', productId: '' });
   const [form, setForm] = useState({
-    date: new Date().toISOString().slice(0, 10),
+    date: today(),
     productId: '',
     quantity: '',
     reason: 'DAMAGE',
@@ -64,7 +68,7 @@ export default function StockOutPage() {
     try {
       await api('/stock-out', {
         method: 'POST',
-        body: JSON.stringify({ ...form, quantity: asNumber(form.quantity) }),
+        body: JSON.stringify({ ...form, date: isStaff ? today() : form.date, quantity: asNumber(form.quantity) }),
       });
       setForm((current) => ({ ...current, quantity: '', referenceNumber: '', note: '' }));
       setMessage('Stock Out recorded.');
@@ -81,7 +85,7 @@ export default function StockOutPage() {
       <section className="panel">
         <h3>Create Stock Out Entry</h3>
         <form className="form-grid" onSubmit={handleSubmit}>
-          <label>Date<input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required /></label>
+          <label>Date<input type="date" value={isStaff ? today() : form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} disabled={isStaff} required /></label>
           <label>Product<select value={form.productId} onChange={(e) => setForm({ ...form, productId: e.target.value })} required><option value="">Select product</option>{products.map((product) => <option key={product.id} value={product.id}>{product.name}</option>)}</select></label>
           <label>Available Stock<input value={selectedProduct ? selectedProduct.stockQty : '-'} readOnly /></label>
           <label>Quantity<input type="number" value={form.quantity} max={selectedProduct?.stockQty || undefined} onChange={(e) => setForm({ ...form, quantity: e.target.value })} required /></label>

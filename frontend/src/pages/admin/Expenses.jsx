@@ -1,9 +1,35 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { api } from '../../api/client';
 import { PageHeader } from '../../components/Layout';
 
-const CATEGORIES = ['RAW_MATERIAL', 'LABOUR', 'TRANSPORT', 'FUEL', 'MAINTENANCE', 'RENT', 'UTILITIES', 'SALARY', 'OTHER'];
-const EMPTY_FORM = { expenseDate: new Date().toISOString().slice(0, 10), category: 'OTHER', amount: '', description: '', note: '' };
+const CATEGORIES = [
+  { value: 'LABOUR', label: 'Labour' },
+  { value: 'FUEL', label: 'Fuel' },
+  { value: 'ELECTRICITY', label: 'Electricity' },
+  { value: 'TRANSPORT', label: 'Transport' },
+  { value: 'MAINTENANCE', label: 'Maintenance' },
+  { value: 'RENT', label: 'Rent' },
+  { value: 'RAW_MATERIAL_PURCHASE', label: 'Raw Material Purchase' },
+  { value: 'MISCELLANEOUS', label: 'Miscellaneous' },
+];
+
+const PAYMENT_MODES = [
+  { value: 'CASH', label: 'Cash' },
+  { value: 'UPI', label: 'UPI' },
+  { value: 'BANK_TRANSFER', label: 'Bank Transfer' },
+  { value: 'CHEQUE', label: 'Cheque' },
+];
+
+const EMPTY_FORM = {
+  expenseDate: new Date().toISOString().slice(0, 10),
+  category: 'LABOUR',
+  amount: '',
+  paymentMode: 'CASH',
+  paidTo: '',
+  billRef: '',
+  description: '',
+};
 
 function asNumber(value) {
   const number = Number(value);
@@ -18,6 +44,10 @@ function formatDate(value) {
   return value ? new Date(value).toLocaleDateString('en-IN') : '';
 }
 
+function labelFor(options, value) {
+  return options.find((option) => option.value === value)?.label || String(value || '').replaceAll('_', ' ');
+}
+
 function htmlCell(value) {
   return String(value ?? '')
     .replaceAll('&', '&amp;')
@@ -26,18 +56,32 @@ function htmlCell(value) {
     .replaceAll('"', '&quot;');
 }
 
+function buildExpenseFormData(form, attachment) {
+  const data = new FormData();
+  Object.entries(form).forEach(([key, value]) => {
+    if (key === 'amount') return;
+    data.append(key, value);
+  });
+  data.append('amount', asNumber(form.amount));
+  if (attachment) data.append('attachment', attachment);
+  return data;
+}
+
 export default function AdminExpenses() {
+  const navigate = useNavigate();
   const [expenses, setExpenses] = useState([]);
   const [filters, setFilters] = useState({ fromDate: '', toDate: '', category: '' });
   const [form, setForm] = useState(EMPTY_FORM);
+  const [attachment, setAttachment] = useState(null);
   const [editingId, setEditingId] = useState('');
   const [message, setMessage] = useState('');
+  const fileInputRef = useRef(null);
 
   const load = () => {
     const params = new URLSearchParams();
     Object.entries(filters).forEach(([key, value]) => value && params.set(key, value));
     const query = params.toString() ? `?${params.toString()}` : '';
-    api(`/expenses${query}`).then(setExpenses);
+    api(`/expenses${query}`).then(setExpenses).catch((err) => setMessage(err.message));
   };
 
   useEffect(load, [filters]);
@@ -45,7 +89,8 @@ export default function AdminExpenses() {
   const categoryTotals = useMemo(() => {
     const totals = new Map();
     expenses.forEach((expense) => {
-      totals.set(expense.category, (totals.get(expense.category) || 0) + asNumber(expense.amount));
+      const label = labelFor(CATEGORIES, expense.category);
+      totals.set(label, (totals.get(label) || 0) + asNumber(expense.amount));
     });
     return [...totals.entries()];
   }, [expenses]);
@@ -62,20 +107,26 @@ export default function AdminExpenses() {
 
   const maxTrend = Math.max(...monthlyTrend.map(([, total]) => total), 1);
 
+  const resetForm = () => {
+    setForm(EMPTY_FORM);
+    setAttachment(null);
+    setEditingId('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setMessage('');
     try {
-      const payload = { ...form, amount: asNumber(form.amount) };
+      const payload = buildExpenseFormData(form, attachment);
       if (editingId) {
-        await api(`/expenses/${editingId}`, { method: 'PATCH', body: JSON.stringify(payload) });
+        await api(`/expenses/${editingId}`, { method: 'PATCH', body: payload });
         setMessage('Expense updated.');
       } else {
-        await api('/expenses', { method: 'POST', body: JSON.stringify(payload) });
+        await api('/expenses', { method: 'POST', body: payload });
         setMessage('Expense recorded.');
       }
-      setForm(EMPTY_FORM);
-      setEditingId('');
+      resetForm();
       load();
     } catch (err) {
       setMessage(err.message);
@@ -88,13 +139,17 @@ export default function AdminExpenses() {
       expenseDate: new Date(expense.expenseDate).toISOString().slice(0, 10),
       category: expense.category,
       amount: expense.amount,
-      description: expense.description || '',
-      note: expense.note || '',
+      paymentMode: expense.paymentMode || 'CASH',
+      paidTo: expense.paidTo || '',
+      billRef: expense.billRef || '',
+      description: expense.description || expense.note || '',
     });
+    setAttachment(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const deleteExpense = async (expense) => {
-    if (!window.confirm(`Delete expense "${expense.description}"?`)) return;
+    if (!window.confirm(`Delete expense "${expense.description || expense.category}"?`)) return;
     await api(`/expenses/${expense.id}`, { method: 'DELETE' });
     load();
   };
@@ -103,13 +158,16 @@ export default function AdminExpenses() {
     const rows = expenses.map((expense) => `
       <tr>
         <td>${htmlCell(formatDate(expense.expenseDate))}</td>
-        <td>${htmlCell(expense.category)}</td>
-        <td>${htmlCell(expense.description)}</td>
+        <td>${htmlCell(labelFor(CATEGORIES, expense.category))}</td>
         <td>${htmlCell(expense.amount)}</td>
-        <td>${htmlCell(expense.note || '')}</td>
+        <td>${htmlCell(labelFor(PAYMENT_MODES, expense.paymentMode))}</td>
+        <td>${htmlCell(expense.paidTo || '')}</td>
+        <td>${htmlCell(expense.billRef || '')}</td>
+        <td>${htmlCell(expense.description || expense.note || '')}</td>
+        <td>${htmlCell(expense.attachmentOriginalName || '')}</td>
       </tr>
     `).join('');
-    const html = `<table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const html = `<table><thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Payment Mode</th><th>Paid To</th><th>Bill Ref</th><th>Note</th><th>Attachment</th></tr></thead><tbody>${rows}</tbody></table>`;
     const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -121,11 +179,11 @@ export default function AdminExpenses() {
 
   const exportPdf = () => {
     const rows = expenses.map((expense) => `
-      <tr><td>${formatDate(expense.expenseDate)}</td><td>${expense.category}</td><td>${expense.description || ''}</td><td>${money(expense.amount)}</td><td>${expense.note || ''}</td></tr>
+      <tr><td>${formatDate(expense.expenseDate)}</td><td>${labelFor(CATEGORIES, expense.category)}</td><td>${money(expense.amount)}</td><td>${labelFor(PAYMENT_MODES, expense.paymentMode)}</td><td>${expense.paidTo || ''}</td><td>${expense.billRef || ''}</td><td>${expense.description || expense.note || ''}</td><td>${expense.attachmentOriginalName || ''}</td></tr>
     `).join('');
     const win = window.open('', '_blank');
     if (!win) return;
-    win.document.write(`<html><head><title>Expenses</title><style>body{font-family:Arial;padding:24px}table{width:100%;border-collapse:collapse}td,th{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f4f6}</style></head><body><h1>Expense Register</h1><table><thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Note</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    win.document.write(`<html><head><title>Expenses</title><style>body{font-family:Arial;padding:24px}table{width:100%;border-collapse:collapse;font-size:12px}td,th{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f4f6}</style></head><body><h1>Expense Register</h1><table><thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Payment Mode</th><th>Paid To</th><th>Bill Ref</th><th>Note</th><th>Attachment</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
     win.document.close();
     win.focus();
     win.print();
@@ -139,12 +197,15 @@ export default function AdminExpenses() {
         <h3>{editingId ? 'Edit Expense' : 'Add Expense'}</h3>
         <form className="form-grid" onSubmit={handleSubmit}>
           <label>Date<input type="date" value={form.expenseDate} onChange={(e) => setForm({ ...form, expenseDate: e.target.value })} required /></label>
-          <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}</select></label>
-          <label>Amount<input type="number" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>
-          <label>Description<input value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} required /></label>
-          <label className="span-2">Note<textarea value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} /></label>
+          <label>Category<select value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })}>{CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
+          <label>Amount (INR)<input type="number" min="0.01" step="0.01" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} required /></label>
+          <label>Payment Mode<select value={form.paymentMode} onChange={(e) => setForm({ ...form, paymentMode: e.target.value })}>{PAYMENT_MODES.map((mode) => <option key={mode.value} value={mode.value}>{mode.label}</option>)}</select></label>
+          <label>Paid To<input value={form.paidTo} onChange={(e) => setForm({ ...form, paidTo: e.target.value })} placeholder="Vendor or person" /></label>
+          <label>Bill / Receipt Reference<input value={form.billRef} onChange={(e) => setForm({ ...form, billRef: e.target.value })} /></label>
+          <label>Attachment<input ref={fileInputRef} type="file" accept=".jpg,.jpeg,.pdf" onChange={(e) => setAttachment(e.target.files?.[0] || null)} /></label>
+          <label className="span-2">Note / Description<textarea value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} /></label>
           <button type="submit" className="btn-primary">{editingId ? 'Save Changes' : 'Record Expense'}</button>
-          {editingId && <button type="button" className="btn-ghost" onClick={() => { setEditingId(''); setForm(EMPTY_FORM); }}>Cancel</button>}
+          {editingId && <button type="button" className="btn-ghost" onClick={resetForm}>Cancel</button>}
         </form>
         {message && <p className="form-note">{message}</p>}
       </section>
@@ -169,6 +230,7 @@ export default function AdminExpenses() {
         <div className="panel-toolbar stockin-toolbar">
           <h3>View All Expenses</h3>
           <div className="export-actions">
+            <button type="button" className="btn-ghost" onClick={() => navigate('/admin/expenses/table')}>Table View</button>
             <button type="button" className="btn-ghost" onClick={exportExcel}>Export Excel</button>
             <button type="button" className="btn-ghost" onClick={exportPdf}>Export PDF</button>
           </div>
@@ -176,31 +238,38 @@ export default function AdminExpenses() {
         <div className="form-grid filter-grid">
           <label>From Date<input type="date" value={filters.fromDate} onChange={(e) => setFilters({ ...filters, fromDate: e.target.value })} /></label>
           <label>To Date<input type="date" value={filters.toDate} onChange={(e) => setFilters({ ...filters, toDate: e.target.value })} /></label>
-          <label>Category<select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}><option value="">All categories</option>{CATEGORIES.map((c) => <option key={c} value={c}>{c.replace('_', ' ')}</option>)}</select></label>
+          <label>Category<select value={filters.category} onChange={(e) => setFilters({ ...filters, category: e.target.value })}><option value="">All categories</option>{CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}</select></label>
           <button type="button" className="btn-ghost" onClick={() => setFilters({ fromDate: '', toDate: '', category: '' })}>Clear Filters</button>
         </div>
         <div className="table-wrap">
           <table className="data-table">
-            <thead><tr><th>Date</th><th>Category</th><th>Description</th><th>Amount</th><th>Note</th><th>Actions</th></tr></thead>
+            <thead><tr><th>Date</th><th>Category</th><th>Amount</th><th>Payment</th><th>Paid To</th><th>Bill Ref</th><th>Note</th><th>Attachment</th><th>Actions</th></tr></thead>
             <tbody>
               {expenses.map((expense) => (
                 <tr key={expense.id}>
                   <td>{formatDate(expense.expenseDate)}</td>
-                  <td><span className="badge">{expense.category.replace('_', ' ')}</span></td>
-                  <td>{expense.description}</td>
+                  <td><span className="badge">{labelFor(CATEGORIES, expense.category)}</span></td>
                   <td>{money(expense.amount)}</td>
-                  <td>{expense.note || '-'}</td>
+                  <td>{labelFor(PAYMENT_MODES, expense.paymentMode)}</td>
+                  <td>{expense.paidTo || '-'}</td>
+                  <td>{expense.billRef || '-'}</td>
+                  <td>{expense.description || expense.note || '-'}</td>
+                  <td>
+                    {expense.attachmentUrl ? (
+                      <a className="btn-sm btn-ghost" href={expense.attachmentUrl} target="_blank" rel="noreferrer">View</a>
+                    ) : '-'}
+                  </td>
                   <td>
                     <button type="button" className="btn-sm btn-primary" onClick={() => editExpense(expense)}>Edit</button>
                     <button type="button" className="btn-sm btn-ghost" onClick={() => deleteExpense(expense)}>Delete</button>
                   </td>
                 </tr>
               ))}
-              {expenses.length === 0 && <tr><td colSpan="6">No expenses found.</td></tr>}
+              {expenses.length === 0 && <tr><td colSpan="9">No expenses found.</td></tr>}
             </tbody>
             <tfoot>
               {categoryTotals.map(([category, total]) => (
-                <tr key={category}><td colSpan="3"><strong>{category.replace('_', ' ')} Total</strong></td><td><strong>{money(total)}</strong></td><td colSpan="2" /></tr>
+                <tr key={category}><td colSpan="2"><strong>{category} Total</strong></td><td><strong>{money(total)}</strong></td><td colSpan="6" /></tr>
               ))}
             </tfoot>
           </table>

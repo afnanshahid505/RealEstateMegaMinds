@@ -4,9 +4,10 @@ import { Layout } from './components/Layout';
 import Login from './pages/Login';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
+import CustomersList from './pages/admin/CustomersList';
 import AdminCustomers from './pages/admin/Customers';
-import AdminStockInView from './pages/admin/StockInView';
 import AdminExpenses from './pages/admin/Expenses';
+import ExpensesTable from './pages/admin/ExpensesTable';
 import AccountReport from './pages/admin/AccountReport';
 import StaffAccounts from './pages/admin/StaffAccounts';
 import StaffRawMaterials from './pages/staff/RawMaterials';
@@ -16,6 +17,7 @@ import StaffProductsView from './pages/staff/ProductsView';
 import StaffProfile from './pages/staff/Profile';
 import StockOutPage from './pages/shared/StockOut';
 import ProductionReport from './pages/shared/ProductionReport';
+import StockReport from './pages/admin/StockReport';
 
 function ProtectedRoute({ children, role }) {
   const { user, loading } = useAuth();
@@ -31,12 +33,14 @@ const adminNav = [
   { to: '/admin', label: 'Dashboard', end: true },
   { to: '/admin/products', label: 'Products' },
   { to: '/admin/raw-materials', label: 'Raw Materials' },
+  { to: '/admin/production', label: 'Production' },
   { to: '/admin/customers', label: 'Customers' },
   { to: '/admin/staff-accounts', label: 'Staff Accounts' },
   { to: '/admin/stock-in', label: 'Stock In' },
   { to: '/admin/stock-out', label: 'Stock Out' },
   { to: '/admin/expenses', label: 'Expenses' },
   { to: '/admin/production-report', label: 'Production Report' },
+  { to: '/admin/stock-report', label: 'Stock Report' },
   { to: '/admin/account-report', label: 'Account Report' },
 ];
 
@@ -80,12 +84,16 @@ function AppRoutes() {
         <Route index element={<AdminDashboard />} />
         <Route path="products" element={<AdminProducts />} />
         <Route path="raw-materials" element={<StaffRawMaterials />} />
-        <Route path="customers" element={<AdminCustomers />} />
+        <Route path="production" element={<StaffProduction />} />
+        <Route path="customers" element={<CustomersList />} />
+        <Route path="customers/invoice" element={<AdminCustomers />} />
         <Route path="staff-accounts" element={<StaffAccounts />} />
-        <Route path="stock-in" element={<AdminStockInView />} />
+        <Route path="stock-in" element={<StaffStockIn />} />
         <Route path="stock-out" element={<StockOutPage />} />
         <Route path="expenses" element={<AdminExpenses />} />
+        <Route path="expenses/table" element={<ExpensesTable />} />
         <Route path="production-report" element={<ProductionReport />} />
+        <Route path="stock-report" element={<StockReport />} />
         <Route path="account-report" element={<AccountReport />} />
       </Route>
       <Route

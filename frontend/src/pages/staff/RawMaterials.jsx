@@ -170,6 +170,29 @@ export default function StaffRawMaterials() {
     }
   };
 
+  const editMaterial = (id) => {
+    setMessage('');
+    setError('');
+    setSelectedId(id);
+    setTab('manage');
+  };
+
+  const deleteMaterial = async (material) => {
+    if (!window.confirm(`Delete material "${material.name}"?`)) return;
+    setMessage('');
+    setError('');
+    try {
+      await api(`/raw-materials/${material.id}`, { method: 'DELETE' });
+      setMessage('Material deleted.');
+      if (selectedId === material.id) {
+        setSelectedId('');
+      }
+      load();
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
   const lowCount = materials.filter((m) => m.isLowStock).length;
 
   return (
@@ -211,6 +234,7 @@ export default function StaffRawMaterials() {
                 <th>Total Value</th>
                 <th>Reorder</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -237,6 +261,10 @@ export default function StaffRawMaterials() {
                     ) : (
                       <span className="badge badge-approved">OK</span>
                     )}
+                  </td>
+                  <td>
+                    <button type="button" className="btn-sm btn-primary" onClick={() => editMaterial(m.id)}>Edit</button>
+                    <button type="button" className="btn-sm btn-ghost" onClick={() => deleteMaterial(m)}>Delete</button>
                   </td>
                 </tr>
               ))}

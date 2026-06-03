@@ -34,19 +34,3 @@ npm install
 npm run dev
 ```
 
-App runs at `http://localhost:5173` (proxies `/api` to backend)
-
-## Demo logins
-
-| Role  | Email                     | Password  |
-|-------|---------------------------|-----------|
-| Admin | ravi@brickfactory.com     | admin123  |
-| Staff | staff@brickfactory.com    | staff123  |
-
-## Role access
-
-**Admin (Ravi):** Dashboard, create/approve products, customers, view stock in audit trail.
-
-**Staff:** Enter raw material purchases, production entries, manual stock in; view approved products (read-only).
-
-Production automatically deducts raw materials and creates a Stock In record with source `PRODUCTION`.

@@ -24,6 +24,19 @@ function materialSummary(materials) {
   return materials.map((m) => `${m.name}: ${formatNumber(m.quantity)} ${m.unit || ''}`).join(', ');
 }
 
+function summaryRows(report) {
+  return [
+    ['Period Total Bricks', formatNumber(report?.totals?.totalBricks)],
+    ['Total Cement Bags', formatNumber(report?.totals?.totalBags)],
+    ['Overall Bags / 1000', formatNumber(report?.totals?.overallBagsPer1000)],
+    ['Overall Bricks / Bag', formatNumber(report?.totals?.overallBricksPerBag)],
+    ['Previous Bricks', formatNumber(report?.previousTotals?.totalBricks)],
+    ['Trend Bricks', formatNumber(report?.comparison?.bricksChange)],
+    ['Trend Bags', formatNumber(report?.comparison?.bagsChange)],
+    ['Efficiency Change', formatNumber(report?.comparison?.efficiencyChange)],
+  ];
+}
+
 export default function ProductionReport() {
   const [products, setProducts] = useState([]);
   const [filters, setFilters] = useState({ fromDate: '', toDate: '', productId: '' });
@@ -41,6 +54,9 @@ export default function ProductionReport() {
   useEffect(load, [filters]);
 
   const exportExcel = () => {
+    const summary = summaryRows(report).map(([label, value]) => `
+      <tr><td>${htmlCell(label)}</td><td>${htmlCell(value)}</td></tr>
+    `).join('');
     const rows = report?.rows?.map((row) => `
       <tr>
         <td>${htmlCell(row.date)}</td>
@@ -52,7 +68,16 @@ export default function ProductionReport() {
         <td>${htmlCell(materialSummary(row.otherMaterials))}</td>
       </tr>
     `).join('');
-    const html = `<table><thead><tr><th>Date</th><th>Brick Type</th><th>Total Bricks</th><th>Cement Bags</th><th>Bags / 1000</th><th>Bricks / Bag</th><th>Other Materials</th></tr></thead><tbody>${rows}</tbody></table>`;
+    const html = `
+      <h3>Production Report</h3>
+      <p>${htmlCell(report?.filters?.fromDate)} to ${htmlCell(report?.filters?.toDate)}</p>
+      <table><thead><tr><th>Summary</th><th>Value</th></tr></thead><tbody>${summary}</tbody></table>
+      <table>
+        <thead><tr><th>Date</th><th>Brick Type</th><th>Total Bricks</th><th>Cement Bags</th><th>Bags / 1000</th><th>Bricks / Bag</th><th>Other Materials</th></tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot><tr><td colspan="2"><strong>Summary Row</strong></td><td><strong>${formatNumber(report?.totals?.totalBricks)}</strong></td><td><strong>${formatNumber(report?.totals?.totalBags)}</strong></td><td><strong>${formatNumber(report?.totals?.overallBagsPer1000)}</strong></td><td><strong>${formatNumber(report?.totals?.overallBricksPerBag)}</strong></td><td></td></tr></tfoot>
+      </table>
+    `;
     const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -63,12 +88,15 @@ export default function ProductionReport() {
   };
 
   const exportPdf = () => {
+    const summary = summaryRows(report).map(([label, value]) => `
+      <tr><td>${htmlCell(label)}</td><td>${htmlCell(value)}</td></tr>
+    `).join('');
     const rows = report?.rows?.map((row) => `
       <tr><td>${htmlCell(row.date)}</td><td>${htmlCell(row.productName)}</td><td>${formatNumber(row.totalBricks)}</td><td>${formatNumber(row.cementBags)}</td><td>${formatNumber(row.avgBagsPer1000)}</td><td>${formatNumber(row.avgBricksPerBag)}</td><td>${htmlCell(materialSummary(row.otherMaterials))}</td></tr>
     `).join('');
     const win = window.open('', '_blank');
     if (!win) return;
-    win.document.write(`<html><head><title>Production Report</title><style>body{font-family:Arial;padding:24px}table{width:100%;border-collapse:collapse;font-size:12px}td,th{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f4f6}</style></head><body><h1>Production Report</h1><p>${report?.filters?.fromDate} to ${report?.filters?.toDate}</p><table><thead><tr><th>Date</th><th>Brick Type</th><th>Total Bricks</th><th>Cement Bags</th><th>Bags / 1000</th><th>Bricks / Bag</th><th>Other Materials</th></tr></thead><tbody>${rows}</tbody></table></body></html>`);
+    win.document.write(`<html><head><title>Production Report</title><style>body{font-family:Arial;padding:24px}table{width:100%;border-collapse:collapse;font-size:12px;margin-bottom:18px}td,th{border:1px solid #ddd;padding:8px;text-align:left}th{background:#f3f4f6}.summary-table{max-width:520px}</style></head><body><h1>Production Report</h1><p>${htmlCell(report?.filters?.fromDate)} to ${htmlCell(report?.filters?.toDate)}</p><h3>Summary</h3><table class="summary-table"><thead><tr><th>Metric</th><th>Value</th></tr></thead><tbody>${summary}</tbody></table><h3>Report Line Items</h3><table><thead><tr><th>Date</th><th>Brick Type</th><th>Total Bricks</th><th>Cement Bags</th><th>Bags / 1000</th><th>Bricks / Bag</th><th>Other Materials</th></tr></thead><tbody>${rows}</tbody><tfoot><tr><td colspan="2"><strong>Summary Row</strong></td><td><strong>${formatNumber(report?.totals?.totalBricks)}</strong></td><td><strong>${formatNumber(report?.totals?.totalBags)}</strong></td><td><strong>${formatNumber(report?.totals?.overallBagsPer1000)}</strong></td><td><strong>${formatNumber(report?.totals?.overallBricksPerBag)}</strong></td><td></td></tr></tfoot></table></body></html>`);
     win.document.close();
     win.focus();
     win.print();

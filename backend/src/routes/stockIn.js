@@ -48,7 +48,7 @@ router.get("/", async (req, res) => {
 
 router.post("/", async (req, res) => {
   try {
-    const { date, productId, quantity, source, referenceNumber } = req.body;
+    const { date, productId, quantity, source, referenceNumber, note, enteredById } = req.body;
 
     if (!date || !productId || !quantity || !source || !referenceNumber) {
       return res.status(400).json({ error: "All stock in fields are required" });
@@ -73,14 +73,15 @@ router.post("/", async (req, res) => {
     const record = await prisma.$transaction(async (tx) => {
       const stockIn = await tx.stockIn.create({
         data: {
-          date: new Date(date),
+          date: req.user.role === "STAFF" ? new Date() : new Date(date),
           productId,
           quantity,
           source,
           referenceNumber,
-          enteredById: req.user.id,
+          note: note || null,
+          enteredById: enteredById || req.user.id,
         },
-        include: { product: true },
+        include: { product: true, enteredBy: { select: { name: true } } },
       });
 
       await tx.product.update({

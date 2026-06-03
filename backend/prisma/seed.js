@@ -26,7 +26,7 @@ async function main() {
     create: {
       email: "staff@123.com",
       password: staffHash,
-      name: "Store Manager",
+      name: "rohit",
       post: "Store Manager",
       role: "STAFF",
     },

@@ -48,6 +48,7 @@ router.post("/", async (req, res) => {
       quantityProduced,
       workerCount,
       batchReference,
+      note,
       materialUsages,
     } = req.body;
 
@@ -81,6 +82,7 @@ router.post("/", async (req, res) => {
           quantityProduced,
           workerCount: parseInt(workerCount, 10),
           batchReference,
+          note: note || null,
           enteredById: req.user.id,
           materialUsages: {
             create: usages.map((u) => ({
